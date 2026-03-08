@@ -1,5 +1,5 @@
 import { WebSocket, WebSocketServer as WSServer } from "ws";
-import type { Agent, AgentEvent } from "@mariozechner/pi-agent-core";
+import type { AgentEvent } from "@mariozechner/pi-agent-core";
 import { createAgent } from "./agent.js";
 
 interface ClientMessage {
@@ -51,7 +51,7 @@ export class WebsocketServer {
     console.log("Client connected");
 
     const agentId = Math.random().toString(36).slice(2, 9);
-    let agent: Agent;
+    let agent: any;
     let unsubscribe: (() => void) | undefined;
 
     try {
@@ -82,11 +82,7 @@ export class WebsocketServer {
       if (unsubscribe) {
         unsubscribe();
       }
-      if (typeof (agent as any).dispose === "function") {
-        (agent as any).dispose();
-      } else {
-        console.log(`Agent ${agentId} orphaned for garbage collection`);
-      }
+      agent.dispose();
     });
 
     ws.on("error", (err: Error) => {
@@ -94,7 +90,7 @@ export class WebsocketServer {
     });
   }
 
-  private handleMessage(ws: WebSocket, data: string, agent: Agent): void {
+  private handleMessage(ws: WebSocket, data: string, agent: any): void {
     try {
       const message: ClientMessage = JSON.parse(data);
 
