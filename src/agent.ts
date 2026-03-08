@@ -1,17 +1,10 @@
 import { createAgentSession, SessionManager, createCodingTools, DefaultResourceLoader } from "@mariozechner/pi-coding-agent";
-import { getModel, streamSimple, Type, Static } from "@mariozechner/pi-ai";
+import { getModel, streamSimple } from "@mariozechner/pi-ai";
 import * as fs from "fs";
 import * as readline from "readline";
 import * as path from "path";
 import { WebsocketServer } from "./websocket-server.js";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { Model } from "@mariozechner/pi-ai";
-
-function getSessionFile(): string {
-  const sessionDir = path.join(process.cwd(), ".sessions");
-  fs.mkdirSync(sessionDir, { recursive: true });
-  return path.join(sessionDir, "agent.jsonl");
-}
 
 function loadAgentInstructions(): string {
   try {
