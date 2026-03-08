@@ -71,10 +71,10 @@ function createModel(): Model<"openai-completions"> {
     api: api as "openai-completions",
     provider: "custom",
     baseUrl,
-    reasoning: false,
+    reasoning: true,
     input: ["text"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: 128000,
+    contextWindow: 202752,
     maxTokens: 8192,
   };
 }
@@ -99,12 +99,15 @@ async function createAgent(): Promise<Agent> {
       systemPrompt: "You are a helpful assistant with access to file tools. Be concise.",
       model,
       tools: [readFileTool, listFilesTool],
-      thinkingLevel: "off",
+      thinkingLevel: "medium", // "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
     },
     streamFn,
   });
 
   agent.subscribe((event) => {
+    if (event.type === "agent_start") {
+      console.log("\nAgent started");
+    }
     if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
       process.stdout.write(event.assistantMessageEvent.delta);
     }
