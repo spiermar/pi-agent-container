@@ -6,14 +6,6 @@ import * as path from "path";
 import { WebsocketServer } from "./websocket-server.js";
 import type { Model } from "@mariozechner/pi-ai";
 
-function loadAgentInstructions(): string {
-  try {
-    return fs.readFileSync("workspace/AGENTS.md", "utf-8");
-  } catch {
-    return "";
-  }
-}
-
 function createModel(): Model<any> {
   const baseUrl = process.env.LLM_BASE_URL;
   const modelId = process.env.LLM_MODEL;
@@ -44,9 +36,7 @@ export async function createAgent(): Promise<any> {
 
 export async function createSession(sessionManager: any) {
   const model = createModel();
-  const agentInstructions = loadAgentInstructions();
-  const basePrompt = "You are a helpful assistant with access to file tools. Be concise.";
-  const systemPrompt = agentInstructions ? `${basePrompt}\n\n${agentInstructions}` : basePrompt;
+  const systemPrompt = "You are a helpful assistant with access to file tools. Be concise.";
 
   const resourceLoader = new DefaultResourceLoader({
     cwd: process.cwd(),
