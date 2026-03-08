@@ -17,7 +17,8 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 COPY --from=0 /app/dist ./dist
-COPY workspace ./workspace
+
+RUN mkdir -p /app/workspace
 
 USER node
 
