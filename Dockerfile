@@ -16,9 +16,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 
-COPY --from=0 /app/dist ./dist
+COPY --from=0 /app/dist .
 
-RUN mkdir -p /app/workspace
+RUN mkdir -p /workspace
+
+WORKDIR /workspace
 
 USER node
 
@@ -27,4 +29,4 @@ ENV WEBSOCKET_PORT=8080
 
 EXPOSE 8080
 
-CMD ["node", "dist/agent.js"]
+CMD ["node", "../app/agent.js"]
