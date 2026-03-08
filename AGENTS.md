@@ -122,7 +122,7 @@ Optional:
 - `LLM_API` - API type (default: "openai-completions")
 - `OPENAI_API_KEY` - API key for authentication
 - `AGENT_PROMPT` - If set, runs single prompt instead of REPL
-- `WEBSOCKET_PORT` - Port for WebSocket server (default: 8080)
+- `WEBSOCKET_PORT` - Port for WebSocket server (default: 8888)
 - `WEBSOCKET_MODE` - If set, runs WebSocket server instead of REPL
 
 See `.env.example` for reference.

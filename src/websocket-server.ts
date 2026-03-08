@@ -14,7 +14,7 @@ export class WebsocketServer {
   private port: number;
   private connectionCount = 0;
 
-  constructor(port: number = 8080) {
+  constructor(port: number = 8888) {
     if (typeof port !== "number" || port < 1 || port > 65535 || !Number.isInteger(port)) {
       throw new Error(`Invalid port: ${port}. Must be an integer between 1 and 65535.`);
     }

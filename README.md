@@ -17,7 +17,7 @@ A TypeScript-based PI Agent container providing an AI agent with file system too
 | `OPENAI_API_KEY` | No | API key for authentication |
 | `AGENT_PROMPT` | No | If set, runs single prompt instead of REPL |
 | `WEBSOCKET_MODE` | No | If set, runs WebSocket server instead of REPL |
-| `WEBSOCKET_PORT` | No | Port for WebSocket server (default: 8080) |
+| `WEBSOCKET_PORT` | No | Port for WebSocket server (default: 8888) |
 
 ## Build the Container
 
@@ -64,12 +64,12 @@ docker run --rm \
   -e LLM_MODEL=llama3 \
   -e OPENAI_API_KEY=ollama \
   -e WEBSOCKET_MODE=true \
-  -p 8080:8080 \
+  -p 8888:8888 \
   -v $(pwd)/workspace:/app/workspace \
   pi-agent
 ```
 
-Connect to `ws://localhost:8080` to interact with the agent via WebSocket.
+Connect to `ws://localhost:8888` to interact with the agent via WebSocket.
 
 ## Volume Mount
 

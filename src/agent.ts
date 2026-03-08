@@ -153,7 +153,7 @@ async function runRepl(): Promise<void> {
 }
 
 async function runWebsocketServer(): Promise<void> {
-  const port = parseInt(process.env.WEBSOCKET_PORT || "8080", 10);
+  const port = parseInt(process.env.WEBSOCKET_PORT || "8888", 10);
   const server = new WebsocketServer(port);
 
   const cleanup = () => {
