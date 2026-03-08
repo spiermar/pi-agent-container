@@ -63,11 +63,12 @@ function validateEnv(): void {
 function createModel(): Model<"openai-completions"> {
   const baseUrl = process.env.LLM_BASE_URL!;
   const modelId = process.env.LLM_MODEL!;
+  const api = process.env.LLM_API || "openai-completions";
 
   return {
     id: modelId,
     name: modelId,
-    api: "openai-completions",
+    api: api as "openai-completions",
     provider: "custom",
     baseUrl,
     reasoning: false,
@@ -78,10 +79,10 @@ function createModel(): Model<"openai-completions"> {
   };
 }
 
-function createStreamFn(): typeof streamSimple {
+function createStreamFn() {
   const apiKey = process.env.LLM_API_KEY;
   
-  return (model, context, options) => {
+  return (model: any, context: any, options?: any) => {
     return streamSimple(model, context, {
       ...options,
       ...(apiKey && { apiKey }),
@@ -121,9 +122,30 @@ async function createAgent(): Promise<Agent> {
   return agent;
 }
 
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: Error | undefined;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.error(`Attempt ${attempt}/${maxRetries} failed: ${lastError.message}`);
+      
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError || new Error("Operation failed after retries");
+}
+
 async function runPrompt(prompt: string): Promise<void> {
   const agent = await createAgent();
-  await agent.prompt(prompt);
+  await withRetry(() => agent.prompt(prompt));
   console.log();
 }
 
@@ -156,7 +178,7 @@ async function runRepl(): Promise<void> {
         return;
       }
       try {
-        await agent.prompt(trimmed);
+        await withRetry(() => agent.prompt(trimmed));
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`Error: ${message}`);
