@@ -21,8 +21,9 @@ const readFileTool: AgentTool<typeof readFileParams> = {
     try {
       const content = fs.readFileSync(params.path, "utf-8");
       return { content: [{ type: "text", text: content }], details: {} };
-    } catch (err: any) {
-      return { content: [{ type: "text", text: `Error: ${err.message}` }], details: {} };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { content: [{ type: "text", text: `Error: ${message}` }], details: { error: message } };
     }
   },
 };
@@ -42,15 +43,16 @@ const listFilesTool: AgentTool<typeof listFilesParams> = {
     try {
       const files = fs.readdirSync(params.path);
       return { content: [{ type: "text", text: files.join("\n") }], details: { count: files.length } };
-    } catch (err: any) {
-      return { content: [{ type: "text", text: `Error: ${err.message}` }], details: {} };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { content: [{ type: "text", text: `Error: ${message}` }], details: { error: message } };
     }
   },
 };
 
 function validateEnv(): void {
   const required = ["LLM_BASE_URL", "LLM_MODEL"];
-  const missing = required.filter((key) => !process.env[key]);
+  const missing = required.filter((key) => !process.env[key]?.trim());
   
   if (missing.length > 0) {
     console.error(`Error: Missing required environment variables: ${missing.join(", ")}`);
@@ -133,13 +135,20 @@ async function runRepl(): Promise<void> {
     output: process.stdout,
   });
 
+  const cleanup = () => {
+    rl.close();
+  };
+
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
+
   console.log("PI Agent REPL (type 'exit' to quit)\n");
 
   const ask = () => {
     rl.question("You: ", async (input) => {
       const trimmed = input.trim();
       if (trimmed === "exit") {
-        rl.close();
+        cleanup();
         return;
       }
       if (!trimmed) {
@@ -148,8 +157,9 @@ async function runRepl(): Promise<void> {
       }
       try {
         await agent.prompt(trimmed);
-      } catch (err: any) {
-        console.error(`Error: ${err.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`Error: ${message}`);
       }
       console.log();
       ask();
