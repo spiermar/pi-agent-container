@@ -2,6 +2,7 @@ import { Agent } from "@mariozechner/pi-agent-core";
 import { streamSimple, Type, Static } from "@mariozechner/pi-ai";
 import * as fs from "fs";
 import * as readline from "readline";
+import { WebsocketServer } from "./websocket-server.js";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { Model } from "@mariozechner/pi-ai";
 import type { Context, AssistantMessage } from "@mariozechner/pi-ai";
@@ -205,12 +206,29 @@ async function runRepl(): Promise<void> {
   ask();
 }
 
+async function runWebsocketServer(): Promise<void> {
+  const port = parseInt(process.env.WEBSOCKET_PORT || "8080", 10);
+  const server = new WebsocketServer(port);
+
+  const cleanup = () => {
+    server.stop().then(() => process.exit(0));
+  };
+
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
+
+  await server.start();
+}
+
 async function main() {
   validateEnv();
 
   const prompt = process.env.AGENT_PROMPT;
-  
-  if (prompt) {
+  const websocketMode = process.env.WEBSOCKET_MODE;
+
+  if (websocketMode) {
+    await runWebsocketServer();
+  } else if (prompt) {
     await runPrompt(prompt);
   } else {
     await runRepl();
