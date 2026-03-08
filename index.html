@@ -46,6 +46,7 @@
   <script>
     const wsUrl = `ws://${window.location.hostname || 'localhost'}:8888`;
     let ws = null;
+    let currentResponse = '';
 
     const statusEl = document.getElementById('connection-status');
     const messagesEl = document.getElementById('messages');
@@ -115,17 +116,28 @@
             return;
           }
 
-          let content = '';
-          if (data.content) {
-            if (Array.isArray(data.content)) {
-              content = data.content.map(c => c.text || JSON.stringify(c)).join('\n');
-            } else {
-              content = data.content;
+          // Handle AgentEvent types
+          if (data.type === 'message_update' && data.assistantMessageEvent) {
+            // Text delta events - accumulate
+            if (data.assistantMessageEvent.type === 'text_delta') {
+              currentResponse += data.assistantMessageEvent.delta || '';
             }
-          }
+          } else {
+            // Other events - flush accumulated response first
+            if (currentResponse) {
+              addMessage(currentResponse, false);
+              currentResponse = '';
+            }
 
-          if (content) {
-            addMessage(content, false);
+            if (data.type === 'tool_execution_start') {
+              addMessage(`[${data.toolName}] ${JSON.stringify(data.args)}`, false);
+            } else if (data.type === 'tool_execution_end') {
+              addMessage(data.isError ? `[ERROR] ${data.error}` : '[OK]', false);
+            } else if (data.type === 'agent_start') {
+              // Skip - not very useful
+            } else if (data.type === 'agent_end') {
+              // Skip - the response was already flushed
+            }
           }
         } catch (err) {
           addError('Failed to parse message');
@@ -133,6 +145,10 @@
       };
 
       ws.onclose = () => {
+        if (currentResponse) {
+          addMessage(currentResponse, false);
+          currentResponse = '';
+        }
         updateConnectionStatus(false);
         addMessage('Disconnected from agent', false);
       };
