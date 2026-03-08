@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as readline from "readline";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { Model } from "@mariozechner/pi-ai";
+import type { Context, AssistantMessage } from "@mariozechner/pi-ai";
 
 const readFileParams = Type.Object({
   path: Type.String({ description: "Path to the file" }),
@@ -75,8 +76,20 @@ function createModel(): Model<"openai-completions"> {
   };
 }
 
+function createStreamFn(): typeof streamSimple {
+  const apiKey = process.env.LLM_API_KEY;
+  
+  return (model, context, options) => {
+    return streamSimple(model, context, {
+      ...options,
+      ...(apiKey && { apiKey }),
+    });
+  };
+}
+
 async function createAgent(): Promise<Agent> {
   const model = createModel();
+  const streamFn = createStreamFn();
   
   const agent = new Agent({
     initialState: {
@@ -85,7 +98,7 @@ async function createAgent(): Promise<Agent> {
       tools: [readFileTool, listFilesTool],
       thinkingLevel: "off",
     },
-    streamFn: streamSimple,
+    streamFn,
   });
 
   agent.subscribe((event) => {
