@@ -23,5 +23,8 @@ RUN mkdir -p /app/workspace
 USER node
 
 ENV NODE_ENV=production
+ENV WEBSOCKET_PORT=8080
+
+EXPOSE 8080
 
 CMD ["node", "dist/agent.js"]
