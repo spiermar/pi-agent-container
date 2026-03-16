@@ -1,14 +1,7 @@
 import { Bot, Context } from "grammy"
-import axios from "axios"
 import * as process from "process"
-
-interface CreateSessionResponse {
-  sessionId: string
-}
-
-interface PromptResponse {
-  result: string
-}
+import { AgentHttpClient } from "./http-client.js"
+import { SessionStore } from "./session-store.js"
 
 const token = process.env.TELEGRAM_BOT_TOKEN
 if (!token) {
@@ -17,8 +10,10 @@ if (!token) {
 
 const bot = new Bot(token as string)
 const agentUrl = process.env.AGENT_API_URL || "http://localhost:8888"
+const agentClient = new AgentHttpClient(agentUrl)
+const sessionStore = new SessionStore()
 
-const userSessions = new Map<number, string>()
+sessionStore.startCleanup(agentClient)
 
 bot.on("message:text", async (ctx: Context) => {
   const userId = ctx.from?.id
@@ -28,14 +23,16 @@ bot.on("message:text", async (ctx: Context) => {
   if (!message || !("text" in message) || !message.text) return
   const text = message.text
 
-  let sessionId = userSessions.get(userId)
+  let sessionId = sessionStore.getOrCreate(userId, async () => {
+    const session = await agentClient.createSession()
+    return session.sessionId
+  })
 
   if (!sessionId) {
     try {
-      const response = await axios.post<CreateSessionResponse>(`${agentUrl}/api/sessions`)
-      sessionId = response.data.sessionId
-      if (!sessionId) return
-      userSessions.set(userId, sessionId)
+      const session = await agentClient.createSession()
+      sessionId = session.sessionId
+      sessionStore.set(userId, sessionId)
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err)
       await ctx.reply(`Failed to create session: ${errorMessage}`)
@@ -44,11 +41,8 @@ bot.on("message:text", async (ctx: Context) => {
   }
 
   try {
-    const response = await axios.post<PromptResponse>(
-      `${agentUrl}/api/sessions/${sessionId}/prompt`,
-      { prompt: text }
-    )
-    await ctx.reply(response.data.result || "Done")
+    const response = await agentClient.sendPrompt(sessionId, text)
+    await ctx.reply(response.result || "Done")
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err)
     await ctx.reply(`Error: ${errorMessage}`)
@@ -59,6 +53,7 @@ bot.start()
 
 async function shutdown(signal: string) {
   console.log(`Received ${signal}, shutting down gracefully...`)
+  sessionStore.stopCleanup()
   bot.stop()
   process.exit(0)
 }
