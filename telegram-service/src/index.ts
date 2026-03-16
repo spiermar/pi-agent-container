@@ -8,13 +8,14 @@ const userSessions = new Map<number, string>()
 
 bot.on("message:text", async (ctx) => {
   const userId = ctx.from?.id
-  if (!userId) return
+  if (typeof userId !== 'number') return
 
   let sessionId = userSessions.get(userId)
 
   if (!sessionId) {
-    const response = await axios.post(`${agentUrl}/api/sessions`)
+    const response = await axios.post<{ sessionId: string }>(`${agentUrl}/api/sessions`)
     sessionId = response.data.sessionId
+    if (!sessionId) return
     userSessions.set(userId, sessionId)
   }
 
