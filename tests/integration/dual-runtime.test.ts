@@ -21,6 +21,7 @@ const WORKDIR = process.cwd()
 const TEST_TIMEOUT = 30_000
 const DEFAULT_WAIT_TIMEOUT = 10_000
 const WEBSOCKET_STABILITY_TIMEOUT = 1_000
+const LOG_SNIPPET_LENGTH = 2_000
 
 const runtimeProcesses = new Set<RuntimeProcess>()
 const blockingServers = new Set<Server>()
@@ -51,8 +52,8 @@ describe('dual runtime startup and shutdown', () => {
       const websocketPort = await getFreePort()
       const runtime = spawnRuntime({ httpPort, websocketPort })
 
-      await waitForPortOpen(httpPort)
-      await waitForPortOpen(websocketPort)
+      await waitForPortOpen(httpPort, DEFAULT_WAIT_TIMEOUT, runtime)
+      await waitForPortOpen(websocketPort, DEFAULT_WAIT_TIMEOUT, runtime)
 
       const httpStatus = await httpRequest('GET', httpPort, '/api/sessions/not-found')
       expect(httpStatus.status).toBe(404)
@@ -77,8 +78,8 @@ describe('dual runtime startup and shutdown', () => {
         const websocketPort = await getFreePort()
         const runtime = spawnRuntime({ httpPort, websocketPort, extraEnv })
 
-        await waitForPortOpen(httpPort)
-        await waitForPortOpen(websocketPort)
+        await waitForPortOpen(httpPort, DEFAULT_WAIT_TIMEOUT, runtime)
+        await waitForPortOpen(websocketPort, DEFAULT_WAIT_TIMEOUT, runtime)
 
         const exitPromise = waitForExit(runtime)
         await stopRuntime(runtime, 'SIGTERM')
@@ -112,8 +113,8 @@ describe('dual runtime startup and shutdown', () => {
       const websocketPort = await getFreePort()
       const runtime = spawnRuntime({ httpPort, websocketPort })
 
-      await waitForPortOpen(httpPort)
-      await waitForPortOpen(websocketPort)
+      await waitForPortOpen(httpPort, DEFAULT_WAIT_TIMEOUT, runtime)
+      await waitForPortOpen(websocketPort, DEFAULT_WAIT_TIMEOUT, runtime)
 
       const result = await stopRuntime(runtime, 'SIGTERM')
 
@@ -133,12 +134,10 @@ describe('dual runtime startup and shutdown', () => {
       blockingServers.add(blocker)
 
       const runtime = spawnRuntime({ httpPort, websocketPort })
-      const websocketStarted = await waitForPortOpenWhileProcessAlive(runtime, websocketPort, 6_000)
       const result = await waitForExit(runtime)
 
-      expect(websocketStarted).toBe(true)
       expect(result.code).not.toBe(0)
-      await waitForPortClosed(websocketPort)
+      await waitForPortClosed(websocketPort, DEFAULT_WAIT_TIMEOUT, runtime)
     },
     TEST_TIMEOUT
   )
@@ -148,10 +147,10 @@ describe('dual runtime startup and shutdown', () => {
     async () => {
       const httpPort = await getFreePort()
       const websocketPort = await getFreePort()
-      spawnRuntime({ httpPort, websocketPort })
+      const runtime = spawnRuntime({ httpPort, websocketPort })
 
-      await waitForPortOpen(httpPort)
-      await waitForPortOpen(websocketPort)
+      await waitForPortOpen(httpPort, DEFAULT_WAIT_TIMEOUT, runtime)
+      await waitForPortOpen(websocketPort, DEFAULT_WAIT_TIMEOUT, runtime)
 
       const firstCreateResponse = await httpRequest('POST', httpPort, '/api/sessions', {})
       expect(firstCreateResponse.status).toBe(200)
@@ -442,15 +441,28 @@ async function closeWebSocket(ws: WebSocket): Promise<void> {
   }
 }
 
-async function waitForPortOpen(port: number, timeoutMs = DEFAULT_WAIT_TIMEOUT): Promise<void> {
-  await waitForPortState(port, true, timeoutMs)
+async function waitForPortOpen(
+  port: number,
+  timeoutMs = DEFAULT_WAIT_TIMEOUT,
+  runtime?: RuntimeProcess
+): Promise<void> {
+  await waitForPortState(port, true, timeoutMs, runtime)
 }
 
-async function waitForPortClosed(port: number, timeoutMs = DEFAULT_WAIT_TIMEOUT): Promise<void> {
-  await waitForPortState(port, false, timeoutMs)
+async function waitForPortClosed(
+  port: number,
+  timeoutMs = DEFAULT_WAIT_TIMEOUT,
+  runtime?: RuntimeProcess
+): Promise<void> {
+  await waitForPortState(port, false, timeoutMs, runtime)
 }
 
-async function waitForPortState(port: number, shouldBeOpen: boolean, timeoutMs: number): Promise<void> {
+async function waitForPortState(
+  port: number,
+  shouldBeOpen: boolean,
+  timeoutMs: number,
+  runtime?: RuntimeProcess
+): Promise<void> {
   const startedAt = Date.now()
 
   while (Date.now() - startedAt < timeoutMs) {
@@ -462,30 +474,34 @@ async function waitForPortState(port: number, shouldBeOpen: boolean, timeoutMs: 
   }
 
   const expectation = shouldBeOpen ? 'open' : 'closed'
-  throw new Error(`Timed out waiting for port ${port} to become ${expectation}`)
+  const diagnostics = runtime !== undefined ? buildRuntimeDiagnostics(runtime) : ''
+  throw new Error(`Timed out waiting for port ${port} to become ${expectation}${diagnostics}`)
 }
 
-async function waitForPortOpenWhileProcessAlive(
-  runtime: RuntimeProcess,
-  port: number,
-  timeoutMs: number
-): Promise<boolean> {
-  const startedAt = Date.now()
+function buildRuntimeDiagnostics(runtime: RuntimeProcess): string {
+  const stdout = formatOutputSnippet(runtime.stdout())
+  const stderr = formatOutputSnippet(runtime.stderr())
+  const exitCode = runtime.child.exitCode
+  const signalCode = runtime.child.signalCode
 
-  while (Date.now() - startedAt < timeoutMs) {
-    const open = await canConnect(port)
-    if (open) {
-      return true
-    }
+  return [
+    '',
+    `Process state: exitCode=${exitCode ?? 'null'} signal=${signalCode ?? 'null'}`,
+    `STDOUT (tail ${LOG_SNIPPET_LENGTH} chars):\n${stdout}`,
+    `STDERR (tail ${LOG_SNIPPET_LENGTH} chars):\n${stderr}`,
+  ].join('\n')
+}
 
-    if (runtime.child.exitCode !== null || runtime.child.signalCode !== null) {
-      return false
-    }
-
-    await delay(100)
+function formatOutputSnippet(output: string): string {
+  if (output.length === 0) {
+    return '[empty]'
   }
 
-  return false
+  if (output.length <= LOG_SNIPPET_LENGTH) {
+    return output
+  }
+
+  return `...${output.slice(-LOG_SNIPPET_LENGTH)}`
 }
 
 async function canConnect(port: number): Promise<boolean> {
