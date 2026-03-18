@@ -28,6 +28,10 @@ function createModel(): Model<any> {
 }
 
 export async function createAgent() {
+  return createSession(SessionManager.inMemory())
+}
+
+export async function createSession(sessionManager: SessionManager) {
   const model = createModel();
 
   const resourceLoader = new DefaultResourceLoader({
@@ -49,7 +53,7 @@ export async function createAgent() {
     thinkingLevel: "medium",
     tools: createCodingTools(process.cwd()),
     resourceLoader: resourceLoader,
-    sessionManager: SessionManager.inMemory(),
+    sessionManager,
   });
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -95,9 +99,9 @@ async function runWebsocketServer(): Promise<void> {
   await server.start();
 }
 
-function runHttpServer(): void {
+async function runHttpServer(): Promise<void> {
   const port = parseInt(process.env.HTTP_PORT || "3000", 10);
-  startHttpServer(port);
+  await startHttpServer(port);
 
   const cleanup = () => {
     process.exit(0);
@@ -112,7 +116,7 @@ async function main() {
   const httpMode = process.env.HTTP_MODE;
 
   if (httpMode) {
-    runHttpServer();
+    await runHttpServer();
   } else {
     await runWebsocketServer();
   }
