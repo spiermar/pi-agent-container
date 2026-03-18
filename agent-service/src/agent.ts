@@ -137,7 +137,7 @@ async function stopListeners(listeners: RuntimeListener[]): Promise<void> {
   )
 }
 
-function registerSignalCleanup(listeners: RuntimeListener[]): void {
+function registerSignalCleanup(listeners: RuntimeListener[]): { isShuttingDown: () => boolean } {
   let shuttingDown = false
 
   const handleShutdown = async () => {
@@ -157,18 +157,31 @@ function registerSignalCleanup(listeners: RuntimeListener[]): void {
   process.once('SIGTERM', () => {
     void handleShutdown()
   })
+
+  return {
+    isShuttingDown: () => shuttingDown,
+  }
 }
 
 async function main() {
   const startedListeners: RuntimeListener[] = []
+  const signalCleanup = registerSignalCleanup(startedListeners)
 
-  const startup = await Promise.allSettled([startHttpListener(), startWebsocketListener()])
+  const startup = await Promise.allSettled([
+    startHttpListener().then((listener) => {
+      startedListeners.push(listener)
+      return listener
+    }),
+    startWebsocketListener().then((listener) => {
+      startedListeners.push(listener)
+      return listener
+    }),
+  ])
 
   const failures: string[] = []
 
   for (const result of startup) {
     if (result.status === 'fulfilled') {
-      startedListeners.push(result.value)
       continue
     }
 
@@ -177,12 +190,15 @@ async function main() {
   }
 
   if (failures.length > 0) {
+    if (signalCleanup.isShuttingDown()) {
+      return
+    }
+
+    // Keep startup fail-fast semantics: if either listener fails, exit non-zero.
     await stopListeners(startedListeners)
     console.error(`Failed to start listeners: ${failures.join(' | ')}`)
     process.exit(1)
   }
-
-  registerSignalCleanup(startedListeners)
 }
 
 main();
