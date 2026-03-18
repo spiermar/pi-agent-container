@@ -143,38 +143,25 @@ describe('dual runtime startup and shutdown', () => {
   )
 
   it(
-    'keeps HTTP and WebSocket session state isolated',
+    'proves HTTP and WebSocket lifecycle independence in both directions',
     async () => {
       const httpPort = await getFreePort()
       const websocketPort = await getFreePort()
-      const runtime = spawnRuntime({ httpPort, websocketPort })
+      spawnRuntime({ httpPort, websocketPort })
 
       await waitForPortOpen(httpPort)
       await waitForPortOpen(websocketPort)
 
-      const createSessionResponse = await httpRequest('POST', httpPort, '/api/sessions', {})
-      expect(createSessionResponse.status).toBe(200)
-      const firstSessionId = String((createSessionResponse.body as { sessionId: string }).sessionId)
+      const firstCreateResponse = await httpRequest('POST', httpPort, '/api/sessions', {})
+      expect(firstCreateResponse.status).toBe(200)
+      const firstSessionId = String((firstCreateResponse.body as { sessionId: string }).sessionId)
       expect(firstSessionId.length).toBeGreaterThan(0)
 
-      const firstSessionBeforeWebSocket = await httpRequest('GET', httpPort, `/api/sessions/${firstSessionId}`)
-      expect(firstSessionBeforeWebSocket.status).toBe(200)
+      const firstGetBeforeWebSocket = await httpRequest('GET', httpPort, `/api/sessions/${firstSessionId}`)
+      expect(firstGetBeforeWebSocket.status).toBe(200)
 
       const ws = await connectWebSocket(websocketPort)
-      ws.close()
-      await waitForWebSocketClose(ws)
-
-      const firstSessionAfterWebSocket = await httpRequest('GET', httpPort, `/api/sessions/${firstSessionId}`)
-      expect(firstSessionAfterWebSocket.status).toBe(200)
-
-      const secondSessionResponse = await httpRequest('POST', httpPort, '/api/sessions', {})
-      expect(secondSessionResponse.status).toBe(200)
-      const secondSessionId = String((secondSessionResponse.body as { sessionId: string }).sessionId)
-      expect(secondSessionId.length).toBeGreaterThan(0)
-      expect(secondSessionId).not.toBe(firstSessionId)
-
-      const secondSessionAfterWebSocket = await httpRequest('GET', httpPort, `/api/sessions/${secondSessionId}`)
-      expect(secondSessionAfterWebSocket.status).toBe(200)
+      await assertWebSocketRemainsOpen(ws)
 
       const deleteFirstSessionResponse = await httpRequest('DELETE', httpPort, `/api/sessions/${firstSessionId}`)
       expect(deleteFirstSessionResponse.status).toBe(200)
@@ -183,8 +170,20 @@ describe('dual runtime startup and shutdown', () => {
       const deletedFirstSessionResponse = await httpRequest('GET', httpPort, `/api/sessions/${firstSessionId}`)
       expect(deletedFirstSessionResponse.status).toBe(404)
 
-      const secondSessionStillPresent = await httpRequest('GET', httpPort, `/api/sessions/${secondSessionId}`)
-      expect(secondSessionStillPresent.status).toBe(200)
+      await assertWebSocketRemainsOpen(ws)
+
+      ws.close()
+      await waitForWebSocketClose(ws)
+      expect(ws.readyState).toBe(WebSocket.CLOSED)
+
+      const secondCreateResponse = await httpRequest('POST', httpPort, '/api/sessions', {})
+      expect(secondCreateResponse.status).toBe(200)
+      const secondSessionId = String((secondCreateResponse.body as { sessionId: string }).sessionId)
+      expect(secondSessionId.length).toBeGreaterThan(0)
+      expect(secondSessionId).not.toBe(firstSessionId)
+
+      const secondGetAfterWebSocketClose = await httpRequest('GET', httpPort, `/api/sessions/${secondSessionId}`)
+      expect(secondGetAfterWebSocketClose.status).toBe(200)
 
       const deleteSecondSessionResponse = await httpRequest('DELETE', httpPort, `/api/sessions/${secondSessionId}`)
       expect(deleteSecondSessionResponse.status).toBe(200)
@@ -386,6 +385,38 @@ async function waitForWebSocketClose(ws: WebSocket, timeoutMs = DEFAULT_WAIT_TIM
       reject(err)
     })
   })
+}
+
+async function assertWebSocketRemainsOpen(ws: WebSocket, settleMs = 300): Promise<void> {
+  expect(ws.readyState).toBe(WebSocket.OPEN)
+
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, settleMs)
+
+    const onClose = () => {
+      cleanup()
+      reject(new Error('WebSocket closed unexpectedly while asserting independence'))
+    }
+
+    const onError = (err: Error) => {
+      cleanup()
+      reject(err)
+    }
+
+    const cleanup = () => {
+      clearTimeout(timeout)
+      ws.off('close', onClose)
+      ws.off('error', onError)
+    }
+
+    ws.on('close', onClose)
+    ws.on('error', onError)
+  })
+
+  expect(ws.readyState).toBe(WebSocket.OPEN)
 }
 
 async function closeWebSocket(ws: WebSocket): Promise<void> {
