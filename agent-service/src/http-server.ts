@@ -1,7 +1,7 @@
 import type { Server } from 'http'
 import express, { Request, Response } from 'express'
 import { SessionManager } from '@mariozechner/pi-coding-agent'
-import { createSession } from './agent.js'
+import { createAgent } from './agent.js'
 
 const app = express()
 app.use(express.json())
