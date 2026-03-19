@@ -4,34 +4,56 @@ This file provides instructions for agentic coding agents operating in this repo
 
 ## Project Overview
 
-This is a TypeScript-based PI Agent container that provides an AI agent with file system tools. The agent runs as a WebSocket server for remote connections or an HTTP server.
+A multi-service TypeScript application with three main services:
+
+- **agent-service**: AI agent with file system tools, runs as WebSocket or HTTP server
+- **telegram-service**: Telegram bot interface to the agent
+- **frontend-service**: Static frontend served via nginx
+
+## Services Architecture
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│ telegram-service│────▶│  agent-service  │
+└─────────────────┘     │  (WebSocket)    │
+                        └─────────────────┘
+                              ▲
+┌─────────────────┐           │
+│     caddy       │───────────┘
+│ (reverse proxy) │
+└─────────────────┘
+```
 
 ## Build, Lint, and Test Commands
 
-### Build
+### Agent Service
 ```bash
-npm run build        # Compile TypeScript to JavaScript (outputs to dist/)
-npm run dev          # Run in development mode with tsx (hot reload)
-npm run start        # Run the compiled JavaScript from dist/
+cd agent-service
+npm run build        # Compile TypeScript to dist/
+npm run dev          # Run in development mode with tsx
+npm run start        # Run compiled JavaScript
 ```
 
-### Running a Single Test
-This project currently has **no test framework configured**. To add tests, consider installing:
-- `vitest` - Modern test runner (recommended for TypeScript)
-- `jest` - More traditional test framework
-
-Example when tests are added:
+### Telegram Service
 ```bash
-# With vitest
-npx vitest run --test-name-pattern="test name"
+cd telegram-service
+npm run build        # Compile TypeScript to dist/
+npm run dev          # Run in development mode with tsx
+npm run start        # Run compiled JavaScript
+```
 
-# With jest
-npx jest --testNamePattern="test name"
+### Docker Compose
+```bash
+docker compose up --build    # Build and start all services
+docker compose build agent   # Build specific service
+docker compose up -d         # Start in detached mode
+docker compose down          # Stop all services
 ```
 
 ### Type Checking
 ```bash
-npx tsc --noEmit      # Type-check without emitting files
+cd agent-service && npx tsc --noEmit
+cd telegram-service && npx tsc --noEmit
 ```
 
 ## Code Style Guidelines
@@ -87,70 +109,68 @@ npx tsc --noEmit      # Type-check without emitting files
 - Implement proper cleanup with `dispose()` or `stop()` methods
 - Use signal handlers for graceful shutdown
 
-### Tool Implementation Pattern
-Follow this pattern for agent tools:
-```typescript
-const toolParams = Type.Object({
-  paramName: Type.String({ description: "Param description" }),
-});
-type ToolParams = Static<typeof toolParams>;
-
-const tool: AgentTool<typeof toolParams> = {
-  name: "tool_name",
-  label: "Tool Label",
-  description: "What the tool does",
-  parameters: toolParams,
-  execute: async (_id, params: ToolParams) => {
-    try {
-      // Tool logic
-      return { content: [{ type: "text", text: result }], details: {} };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { content: [{ type: "text", text: `Error: ${message}` }], details: { error: message } };
-    }
-  },
-};
-```
-
 ## Environment Variables
 
-Required:
-- `LLM_BASE_URL` - Base URL for LLM API (e.g., http://localhost:11434/v1)
-- `LLM_MODEL` - Model identifier (e.g., llama3.1:8b)
+### Agent Service
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LLM_BASE_URL` | Yes | Base URL for LLM API |
+| `LLM_MODEL` | Yes | Model identifier |
+| `LLM_API` | No | API type (default: "openai-completions") |
+| `OPENAI_API_KEY` | No | API key for authentication |
+| `WEBSOCKET_PORT` | No | WebSocket port (default: 8888) |
+| `HTTP_MODE` | No | Run HTTP server instead of WebSocket |
 
-Optional:
-- `LLM_API` - API type (default: "openai-completions")
-- `OPENAI_API_KEY` - API key for authentication
-- `WEBSOCKET_PORT` - Port for WebSocket server (default: 8888)
-- `HTTP_PORT` - Port for HTTP server (default: 3000)
-- `HTTP_MODE` - If set, runs HTTP server instead of WebSocket server
+### Telegram Service
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Yes | Telegram bot token |
+| `AGENT_API_URL` | Yes | Agent service URL |
+| `WEBHOOK_URL` | No | Public webhook URL |
+| `WEBHOOK_SECRET` | No | Webhook secret |
 
 See `.env.example` for reference.
 
 ## File Structure
 
 ```
-/home/opencode/workspace/pi-agent-container/
-├── src/
-│   ├── agent.ts              # Main agent implementation
-│   └── websocket-server.ts   # WebSocket server for remote connections
-├── dist/                     # Compiled JavaScript output
-├── workspace/                # Agent instructions loaded at runtime
-├── package.json
-├── tsconfig.json
+pi-agent-container/
+├── agent-service/
+│   ├── src/
+│   │   ├── agent.ts              # Main agent implementation
+│   │   ├── websocket-server.ts   # WebSocket server
+│   │   └── http-server.ts        # HTTP REST API
+│   ├── dist/                     # Compiled output
+│   ├── Dockerfile
+│   ├── package.json
+│   └── tsconfig.json
+├── telegram-service/
+│   ├── src/
+│   │   ├── index.ts              # Telegram bot entry point
+│   │   └── http-client.ts        # Agent API client
+│   ├── dist/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── tsconfig.json
+├── frontend-service/
+│   ├── index.html
+│   ├── nginx.conf
+│   └── Dockerfile
+├── docker-compose.yml
+├── Caddyfile
 └── .env.example
 ```
 
 ## Development Workflow
 
-1. Make changes in `src/agent.ts` or `src/websocket-server.ts`
-2. Run `npm run dev` to test changes
+1. Make changes in the appropriate service's `src/` directory
+2. Run `npm run dev` in that service's directory to test changes
 3. Run `npm run build` before deploying
-4. Test the built version with `npm run start`
+4. Test with Docker Compose: `docker compose up --build`
 
 ## WebSocket Server Protocol
 
-When running in `WEBSOCKET_MODE`, clients can send messages:
+When running in WebSocket mode, clients send messages:
 ```typescript
 // Client message format
 { type: "prompt", content: "your prompt here" }
@@ -159,9 +179,19 @@ When running in `WEBSOCKET_MODE`, clients can send messages:
 // Server sends AgentEvent objects as JSON
 ```
 
+## HTTP API
+
+When running in HTTP mode:
+```bash
+POST /api/sessions              # Create session
+POST /api/sessions/:id/prompt   # Send prompt
+GET /api/sessions/:id           # Get session info
+DELETE /api/sessions/:id        # Delete session
+```
+
 ## Notes
 
-- The codebase is small (~320 lines combined) - keep changes focused and minimal
-- No linting or formatting tools are currently configured - manually ensure code consistency
-- The agent uses `createCodingTools` from pi-coding-agent for file system access
-- Session management supports both creating new sessions and continuing recent sessions
+- Each service has its own `package.json` and `tsconfig.json`
+- No linting or formatting tools configured - manually ensure consistency
+- Agent uses `createCodingTools` from pi-coding-agent for file system access
+- Session management supports creating new sessions and continuing recent ones

@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express"
 import { SessionManager } from "@mariozechner/pi-coding-agent"
-import { createSession } from "./agent.js"
+import { createAgent } from "./agent.js"
 
 const app = express()
 app.use(express.json())
@@ -10,8 +10,7 @@ const sessions = new Map<string, { session: any; createdAt: Date }>()
 app.post("/api/sessions", async (req: Request, res: Response) => {
   try {
     const sessionId = Math.random().toString(36).slice(2, 11)
-    const sessionManager = SessionManager.create(process.cwd())
-    const session = await createSession(sessionManager)
+    const session = await createAgent()
     
     sessions.set(sessionId, { session, createdAt: new Date() })
     res.json({ sessionId, createdAt: new Date().toISOString() })

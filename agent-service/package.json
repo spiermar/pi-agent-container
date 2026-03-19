@@ -1,5 +1,5 @@
 {
-  "name": "pi-agent-container",
+  "name": "agent-service",
   "version": "1.0.0",
   "type": "module",
   "scripts": {

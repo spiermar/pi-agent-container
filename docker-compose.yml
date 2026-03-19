@@ -1,6 +1,6 @@
 services:
   agent:
-    build: .
+    build: ./agent-service
     ports:
       - "8888:8888"
     environment:
@@ -36,7 +36,7 @@ services:
     depends_on:
       - telegram
 
-  static-frontend:
+  frontend:
     build: ./frontend-service
     ports:
       - "8080:80"
