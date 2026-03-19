@@ -71,6 +71,22 @@ docker compose build
 | `WEBHOOK_URL` | No | Public webhook URL for Telegram |
 | `WEBHOOK_SECRET` | No | Secret for webhook verification |
 
+## Exposing Services Externally (ngrok)
+
+To expose the Caddy reverse proxy (ports 80/443) to the internet:
+
+1. Set your ngrok auth token:
+   ```bash
+   export NGROK_AUTH_TOKEN=your_token_here
+   ```
+
+2. Start ngrok:
+   ```bash
+   ngrok start --all --config=ngrok.yml
+   ```
+
+This creates public URLs for your local services, useful for Telegram webhooks or external access.
+
 ## Development
 
 ### Agent Service
