@@ -1,5 +1,15 @@
 import type { WebSearchResult, WebSearchError, WebSearchOptions, SearchResult } from './web-tools.js'
 
+interface BraveSearchResponse {
+  web?: {
+    results?: Array<{
+      title: string
+      url: string
+      description: string
+    }>
+  }
+}
+
 const API_BASE = 'https://api.search.brave.com/res/v1/web/search'
 const DEFAULT_TIMEOUT = 30000
 
@@ -44,7 +54,7 @@ export class BraveSearchClient {
         return { error: true, message: `Brave Search API error: ${response.status}` }
       }
 
-      const data = await response.json() as { web?: { results?: Array<{ title: string; url: string; description: string }> } }
+      const data = await response.json() as BraveSearchResponse
       const results: SearchResult[] = data.web?.results?.map(r => ({
         title: r.title,
         url: r.url,

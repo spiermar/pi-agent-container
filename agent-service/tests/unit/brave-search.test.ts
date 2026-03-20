@@ -12,6 +12,8 @@ describe('BraveSearchClient', () => {
 
   afterEach(() => {
     process.env = originalEnv
+    // @ts-expect-error cleanup
+    delete global.fetch
   })
 
   it('returns error when BRAVE_SEARCH_API_KEY is not set', async () => {
