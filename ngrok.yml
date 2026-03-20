@@ -5,3 +5,4 @@ tunnels:
   http:
     proto: http
     addr: 80
+    domain: ${NGROK_DOMAIN}

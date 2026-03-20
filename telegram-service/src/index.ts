@@ -2,6 +2,7 @@ import { Bot, Context } from 'grammy'
 import express, { Request, Response } from 'express'
 import { AgentHttpClient } from './http-client.js'
 import { SessionStore } from './session-store.js'
+import { registerWebhook } from './webhook-config.js'
 
 const webhookUrl = process.env.WEBHOOK_URL
 const webhookSecret = process.env.WEBHOOK_SECRET
@@ -49,7 +50,7 @@ bot.on('message:text', async (ctx: Context) => {
 
 if (webhookUrl) {
   const webhookPath = webhookUrl + '/webhook'
-  await bot.api.setWebhook(webhookPath)
+  await registerWebhook(bot, webhookPath, webhookSecret)
 
   const app = express()
   app.use(express.json())
@@ -57,7 +58,7 @@ if (webhookUrl) {
   app.post('/webhook', async (req: Request, res: Response) => {
     try {
       if (webhookSecret) {
-        const secretToken = req.headers['x-telegram-bot-api-secret-token']
+        const secretToken = req.get('x-telegram-bot-api-secret-token')
         if (secretToken !== webhookSecret) {
           res.status(401).send('Unauthorized')
           return
