@@ -1,6 +1,6 @@
 # Squidl
 
-<img src="squidl.png" alt="Squidl Logo" width="200" />
+<img src="squidl.png" alt="Squidl Logo" width="400" />
 
 A distributed, multi-tenant AI agent platform with sandboxed execution.
 
