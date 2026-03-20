@@ -93,7 +93,7 @@ export async function createSession(sessionManager: SessionManager) {
 }
 
 async function startWebsocketListener(): Promise<RuntimeListener> {
-  const port = parseInt(process.env.WEBSOCKET_PORT || "8888", 10);
+  const port = parseInt(process.env.WEBSOCKET_PORT || "8081", 10);
   const server = new WebsocketServer(port);
   await server.start();
 
@@ -106,7 +106,7 @@ async function startWebsocketListener(): Promise<RuntimeListener> {
 }
 
 async function startHttpListener(): Promise<RuntimeListener> {
-  const port = parseInt(process.env.HTTP_PORT || "3000", 10);
+  const port = parseInt(process.env.HTTP_PORT || "8082", 10);
   const server = await startHttpServer(port)
 
   return {

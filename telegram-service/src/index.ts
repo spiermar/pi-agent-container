@@ -13,7 +13,7 @@ if (!token) {
 }
 
 const bot = new Bot(token as string)
-const agentUrl = process.env.AGENT_API_URL || 'http://localhost:8888'
+const agentUrl = process.env.AGENT_API_URL || 'http://localhost:8082'
 const agentClient = new AgentHttpClient(agentUrl)
 const sessionStore = new SessionStore()
 

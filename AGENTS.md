@@ -139,8 +139,8 @@ docker compose down          # Stop all services
 | `LLM_MODEL` | Yes | Model identifier |
 | `LLM_API` | No | API type (default: "openai-completions") |
 | `OPENAI_API_KEY` | No | API key for authentication |
-| `WEBSOCKET_PORT` | No | WebSocket port (default: 8888) |
-| `HTTP_PORT` | No | HTTP API port (default: 3000) |
+| `WEBSOCKET_PORT` | No | WebSocket port (default: 8081) |
+| `HTTP_PORT` | No | HTTP API port (default: 8082) |
 
 ### Telegram Service
 | Variable | Required | Description |

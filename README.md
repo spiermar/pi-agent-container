@@ -65,21 +65,21 @@ docker compose build
 | `LLM_MODEL` | Yes | Model identifier |
 | `LLM_API` | No | API type (default: "openai-completions") |
 | `OPENAI_API_KEY` | No | API key for authentication |
-| `WEBSOCKET_PORT` | No | Port for WebSocket server (default: 8888) |
-| `HTTP_PORT` | No | Port for HTTP server (default: 3000) |
+| `WEBSOCKET_PORT` | No | Port for WebSocket server (default: 8081) |
+| `HTTP_PORT` | No | Port for HTTP server (default: 8082) |
 
 ### Telegram Service
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Yes | Telegram bot token |
-| `AGENT_API_URL` | Yes | URL to agent service (default: http://agent:8888) |
+| `AGENT_API_URL` | Yes | URL to agent service (default: http://agent:8082) |
 | `WEBHOOK_URL` | No | Public webhook URL for Telegram |
 | `WEBHOOK_SECRET` | No | Secret for webhook verification |
 
 ## Exposing Services Externally (ngrok)
 
-To expose the Caddy reverse proxy (ports 80/443) to the internet:
+To expose the Caddy reverse proxy (port 80) to the internet:
 
 1. Set your ngrok auth token:
    ```bash
