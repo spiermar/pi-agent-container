@@ -27,8 +27,7 @@ WORKDIR /workspace
 USER node
 
 ENV NODE_ENV=production
-ENV WEBSOCKET_PORT=8888
-
-EXPOSE 8888
+ENV WEBSOCKET_PORT=8081
+ENV HTTP_PORT=8082
 
 CMD ["node", "../app/agent.js"]
