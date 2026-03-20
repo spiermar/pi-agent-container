@@ -1,4 +1,5 @@
 :80 {
-    reverse_proxy /telegram/* localhost:3000
-    reverse_proxy /* localhost:8888
+	reverse_proxy /telegram/* telegram:3000
+	reverse_proxy /websocket agent:8888
+	reverse_proxy /* frontend:80
 }

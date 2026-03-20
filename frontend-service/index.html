@@ -45,7 +45,7 @@
 
   <script>
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname || 'localhost'}:8888`;
+    const wsUrl = `${protocol}//${window.location.host}/websocket`;
     let ws = null;
     let currentResponse = '';
 
