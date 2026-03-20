@@ -93,7 +93,7 @@ export async function fetchContent(url: string): Promise<FetchedContent | FetchE
       error: true,
       message: `Unsupported content type: ${contentType ?? 'unknown'}. Supported: text/html, application/pdf`,
     }
-  } catch (err) {
+  } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {
       return { error: true, message: `Request to ${url} timed out` }
     }
