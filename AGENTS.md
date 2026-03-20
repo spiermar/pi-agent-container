@@ -4,6 +4,8 @@ This file provides instructions for agentic coding agents operating in this repo
 
 ## Project Overview
 
+**Squidl** — A distributed, multi-tenant AI agent platform with sandboxed execution.
+
 A multi-service TypeScript application with three main services:
 
 - **agent-service**: AI agent with file system tools, runs as WebSocket or HTTP server

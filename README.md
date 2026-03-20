@@ -1,6 +1,12 @@
-# PI Agent Container
+# Squidl
 
-A multi-service TypeScript application providing an AI agent with file system tools, accessible via WebSocket, HTTP API, or Telegram bot.
+<img src="squidl.png" alt="Squidl Logo" width="200" />
+
+A distributed, multi-tenant AI agent platform with sandboxed execution.
+
+Squidl runs multiple AI agents in isolated environments, scaling your personal AI assistant across teams and workloads. Each agent operates in its own sandboxed container, ensuring security and isolation while coordinating through a unified interface.
+
+Built as a distributed evolution of [OpenClaw](https://github.com/openclaw/openclaw), Squidl extends single-user AI assistance into a scalable, multi-tenant architecture where agents can be spawned, managed, and terminated independently — each reaching into its own protected environment.
 
 ## Services
 
@@ -112,7 +118,7 @@ npm run start    # Run compiled code
 ## Project Structure
 
 ```
-pi-agent-container/
+squidl/
 ├── agent-service/           # AI agent service
 │   ├── src/
 │   │   ├── agent.ts         # Main agent implementation

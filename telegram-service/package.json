@@ -1,5 +1,5 @@
 {
-  "name": "telegram-service",
+  "name": "@squidl/telegram-service",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
