@@ -37,16 +37,54 @@ URL → web_fetch tool → detect content type →
   PDF: fetch → pdf-parse → text
 ```
 
+## TypeScript Types
+
+```typescript
+export interface SearchResult {
+  title: string
+  url: string
+  description: string
+}
+
+export interface WebSearchOptions {
+  count?: number   // 1-20, default 10
+  offset?: number  // 0-9 for pagination
+  search_lang?: string
+}
+
+export interface WebSearchResult {
+  error?: false
+  results: SearchResult[]
+}
+
+export interface WebSearchError {
+  error: true
+  message: string
+}
+
+export interface FetchedContent {
+  error?: false
+  content: string
+  contentType: 'text/html' | 'application/pdf'
+}
+
+export interface FetchError {
+  error: true
+  message: string
+}
+```
+
 ## Components
 
 ### brave-search.ts
 
 `BraveSearchClient` class:
 - `search(query, options)` method
-- Options: `count` (results per page, default 10), `offset` (pagination), `search_lang`
-- Returns `{ results: [{ title, url, description }] }`
+- Options: `count` (1-20, default 10), `offset` (0-9 for pagination), `search_lang`
+- Returns `WebSearchResult | WebSearchError`
 - Reads `BRAVE_SEARCH_API_KEY` from environment
 - 30 second timeout
+- No automatic retry on rate limit (429) — returns error to caller
 
 API endpoint: `https://api.search.brave.com/res/v1/web/search`
 
@@ -57,23 +95,49 @@ Functions:
 - `extractHtml(url)`: fetch → Readability → Turndown → markdown
 - `extractPdf(url)`: fetch → pdf-parse → text
 - 30 second timeout per request
+- Follow up to 5 redirects max
+
+Content-type detection:
+1. Check HTTP `Content-Type` header
+2. Strip charset suffix: `text/html; charset=utf-8` → `text/html`
+3. Fallback: check URL extension if header missing
+
+HTML extraction fallback:
+1. Attempt Readability extraction
+2. If Readability returns null/empty: return raw text content stripped of tags
+3. Log extraction failure for debugging
 
 Supported content types:
 - `text/html` → markdown extraction
 - `application/pdf` → text extraction
 - Other types → error with supported types list
 
+URL validation:
+- Must start with `http://` or `https://` only
+- Reject `file://`, `ftp://`, `javascript:`, `data:` schemes
+- Reject URLs exceeding 2048 characters
+- Use WHATWG URL parser for validation
+
 ### web-tools.ts
 
-`createWebTools()` function returns array of tool definitions:
+`createWebTools()` function returns `Tool[]` (same type as `createCodingTools()`):
+
+```typescript
+import type { Tool } from "@mariozechner/pi-coding-agent"
+import { Type } from "@sinclair/typebox"
+
+export function createWebTools(): Tool[] {
+  return [webSearchTool, webFetchTool]
+}
+```
 
 **web_search**
-- Input: `{ query: string, count?: number }`
-- Output: `{ results: [{ title: string, url: string, description: string }] }`
+- Input schema: `Type.Object({ query: Type.String(), count: Type.Optional(Type.Number()) })`
+- Output: `WebSearchResult | WebSearchError`
 
 **web_fetch**
-- Input: `{ url: string }`
-- Output: `{ content: string, contentType: string }`
+- Input schema: `Type.Object({ url: Type.String() })`
+- Output: `FetchedContent | FetchError`
 
 Integration in `agent.ts`:
 ```typescript
@@ -89,7 +153,16 @@ Add to `package.json`:
 - `@mozilla/readability` — HTML content extraction
 - `turndown` — HTML to markdown conversion
 - `pdf-parse` — PDF text extraction
-- `linkedom` — DOM implementation for Readability (server-side)
+- `linkedom` — DOM implementation for Readability (server-side, lighter weight than JSDOM)
+
+Turndown configuration:
+```typescript
+const turndownService = new TurndownService({
+  headingStyle: 'atx',        // Use # for headings
+  codeBlockStyle: 'fenced',   // Use ``` for code
+  bulletListMarker: '-',      // Use - for bullets
+})
+```
 
 ## Error Handling
 
@@ -134,13 +207,30 @@ All errors returned in tool response objects, not thrown:
 `tests/integration/web-tools-integration.test.ts`:
 - Real Brave Search API calls (requires `BRAVE_SEARCH_API_KEY`)
 - Real URL fetching (public URLs)
-- Skip if API key not present
+- Skip if API key not present:
+
+```typescript
+import { describe, it, expect } from 'vitest'
+
+const describeIfApiKey = process.env.BRAVE_SEARCH_API_KEY 
+  ? describe 
+  : describe.skip
+
+describeIfApiKey('web_search integration', () => {
+  // tests
+})
+```
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `BRAVE_SEARCH_API_KEY` | Yes | Brave Search API key |
+
+Update `.env.example` to include:
+```
+BRAVE_SEARCH_API_KEY=your_brave_search_api_key_here
+```
 
 ## Docker Integration
 
