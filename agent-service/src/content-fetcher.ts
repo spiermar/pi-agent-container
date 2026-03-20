@@ -84,8 +84,9 @@ export async function fetchContent(url: string): Promise<FetchedContent | FetchE
 
     if (contentType === 'application/pdf') {
       const buffer = await response.arrayBuffer()
-      const pdf = await import('pdf-parse')
-      const data = await pdf.default(Buffer.from(buffer))
+      // Lazy load pdf-parse to avoid module-level initialization
+      const pdf = (await import('pdf-parse')).default
+      const data = await pdf(Buffer.from(buffer))
       return { content: data.text, contentType: 'application/pdf' }
     }
 
