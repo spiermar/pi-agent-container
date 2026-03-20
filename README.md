@@ -12,10 +12,11 @@ Built as a distributed evolution of [OpenClaw](https://github.com/openclaw/openc
 
 | Service | Port | Description |
 |---------|------|-------------|
-| `agent-service` | 8888 | WebSocket/HTTP server for AI agent interactions |
+| `agent-service` | 8081 | WebSocket server for direct AI agent interactions |
+| `agent-service` | 8082 | HTTP server for telegram AI agent interactions |
 | `telegram-service` | 3000 | Telegram bot interface to the agent |
-| `frontend-service` | 8080 | Static frontend served via nginx |
-| `caddy` | 80/443 | Reverse proxy with automatic HTTPS |
+| `frontend-service` | 8083 | Static frontend served via nginx |
+| `caddy` | 80 | Reverse proxy |
 
 ## Prerequisites
 
@@ -39,7 +40,7 @@ Built as a distributed evolution of [OpenClaw](https://github.com/openclaw/openc
    ```
 
 4. Services will be available at:
-   - Agent WebSocket: `ws://localhost:8888`
+   - Agent WebSocket: `ws://localhost:8081`
    - Telegram bot: Configure your bot token and webhook
 
 ### Building Individual Services
@@ -143,7 +144,7 @@ squidl/
 
 ## WebSocket Protocol
 
-Connect to `ws://localhost:8888` and send JSON messages:
+Connect to `ws://localhost:8081` and send JSON messages:
 
 ```typescript
 // Send a prompt
